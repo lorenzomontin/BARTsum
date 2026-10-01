@@ -94,14 +94,14 @@ structural records were corrupted. ...
 
 The experiment compares two models against the same 10 held-out test articles:
 
-- **Baseline:** the plain `facebook/bart-large-cnn` — no additional training.
+- **Baseline:** the plain `facebook/bart-large-cnn` without additional training.
 - **Sentiment-conditioned model:** the same base weights, fine-tuned on sentiment-tagged CNN/DailyMail input as described above.
 
-**Why compare against the untouched base model, and not a plain fine-tuned one?** `facebook/bart-large-cnn` is already pretrained specifically on CNN/DailyMail. An earlier experiment in this repo (`bart_finetuning.py`) fine-tuned it again on the same dataset, and that *lowered* ROUGE relative to the untouched base model, further fine-tuning on a small slice of data the model has already seen mostly just adds overfitting, not improvement. That negative result is the reason the untouched base model, not another fine-tuned checkpoint, is the fair comparison point for isolating what sentiment conditioning specifically contributes.
+**Why compare against the untouched base model, and not a plain fine-tuned one?** `facebook/bart-large-cnn` is already pretrained specifically on the CNN/DailyMail dataset. An earlier experiment in this repo (`bart_finetuning.py`) fine-tuned it again on the same dataset, and that *lowered* ROUGE relative to the untouched base model, further fine-tuning on a small slice of data the model has already seen mostly just adds overfitting, not improvement. That negative result is the reason the untouched base model, not another fine-tuned checkpoint, is the fair comparison point for isolating what sentiment conditioning specifically contributes.
 
 ## Results
 
-| Metric              | Base BART | Sentiment-conditioned |
+| Metric              | Base BART |      Bart-sentiment |
 |----------------------|----------:|-----------------------:|
 | ROUGE-1              |     0.407 |                  0.394 |
 | ROUGE-2              |     0.197 |                  0.184 |
@@ -129,9 +129,9 @@ Sentiment alignment improves meaningfully under conditioning, while ROUGE-1/2/L 
 
 ## Evaluation
 
-**Content quality — ROUGE.** ROUGE-1/2 measure unigram/bigram overlap with the reference summary; ROUGE-L and ROUGE-Lsum measure longest common subsequence overlap. These are standard summarisation metrics but only capture lexical overlap, not semantic correctness.
+**Content quality (ROUGE)** ROUGE-1/2 measure unigram/bigram overlap with the reference summary; ROUGE-L and ROUGE-Lsum measure longest common subsequence overlap. These are standard summarisation metrics but only capture lexical overlap, not semantic correctness.
 
-**Sentiment preservation — sentiment alignment.** For a given text, it's split into paragraphs, each is scored by the same RoBERTa sentiment classifier used for tagging, and the resulting probability vectors (negative/neutral/positive) are averaged into one vector per text. Sentiment alignment is the **cosine similarity** between the source article's vector and the generated summary's vector, ranging from -1 (opposite sentiment) to 1 (identical sentiment profile). It is a similarity score, not an accuracy metric as it says nothing about factual correctness, only about whether the emotional tone was preserved.
+**Sentiment preservation and alignment.** For a given article, it's split into paragraphs and each is scored by the same RoBERTa sentiment classifier used for tagging. The resulting probability vectors (negative/neutral/positive) are averaged into one vector per text. Sentiment alignment is the **cosine similarity** between the source article's vector and the generated summary's vector, ranging from -1 (opposite sentiment) to 1 (identical sentiment profile). It is a similarity score, not an accuracy metric as it says nothing about factual correctness, only about whether the emotional tone was preserved.
 
 ## Reproducibility
 

@@ -1,12 +1,3 @@
-"""
-Shared sentiment-tagging utilities.
-
-This is the single source of truth for how text gets tagged with
-[NEGATIVE]/[NEUTRAL]/[POSITIVE] prefixes. bart_sentiment_controlled was
-fine-tuned on 3-sentence-chunk tagging (see sentiment_tagging.ipynb) —
-tag_text_with_sentiment_prefixes here MUST stay in sync with that, since it's
-also used at inference time in evaluate.ipynb.
-"""
 import torch
 import numpy as np
 import nltk
@@ -37,7 +28,7 @@ def _load_sentiment_model():
 
 
 def get_sentiment_probs(text):
-    """Return the [neg, neu, pos] probability vector for one chunk of text."""
+    """Return the [neg, neu, pos] probability vector for one paragraph of text."""
     tokenizer, model = _load_sentiment_model()
     inputs = tokenizer(text, return_tensors="pt", truncation=True, max_length=512).to(device)
     with torch.no_grad():
@@ -48,9 +39,7 @@ def get_sentiment_probs(text):
 def tag_text_with_sentiment_prefixes(text):
     """
     Groups text into chunks of SENTENCES_PER_CHUNK sentences and prefixes each
-    chunk with its dominant sentiment. This is exactly how bart_sentiment_controlled's
-    training data was built (add_sentiment_prefixes_by_nltk) — it must be the
-    ONLY tagging function used, both for training data and at inference.
+    chunk with its dominant sentiment.
     """
     sentences = sent_tokenize(text)
     tagged_chunks = []
@@ -75,14 +64,12 @@ def tag_text_with_sentiment_prefixes(text):
 
 
 def add_sentiment_prefixes(example):
-    """Dataset.map()-compatible wrapper. Adds an 'article_with_sentiment' field
-    (matches the column name the training script tokenizes from)."""
     return {"article_with_sentiment": tag_text_with_sentiment_prefixes(example["article"])}
 
 
 def get_text_sentiment_vector(text):
     """
-    Average sentiment vector across paragraphs — used only for scoring alignment
+    Average sentiment vector across paragraphs, used only for scoring alignment
     between a source text and a summary. Independent of the chunk-tagging above;
     no need for it to match the training format.
     """
@@ -93,7 +80,7 @@ def get_text_sentiment_vector(text):
 
 def calculate_sentiment_preservation(source_text, summary_text):
     """
-    Cosine similarity between source and summary sentiment vectors.
+    Cosine similarity between original articles and summary sentiment vectors.
     1.0 = identical sentiment profile, -1.0 = opposite, 0 = unrelated.
     """
     v_source = get_text_sentiment_vector(source_text)
