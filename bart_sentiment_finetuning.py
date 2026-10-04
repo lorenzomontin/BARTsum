@@ -1,19 +1,6 @@
-"""
-Fine-tunes BART on sentiment-tagged CNN/DailyMail articles.
- 
-Input: the tagged datasets produced by sentiment_tagging.ipynb
-       (./data/tagged_train_nltk, ./data/tagged_val_nltk), where each
-       example's 'article_with_sentiment' field has 3-sentence chunks
-       prefixed with [NEGATIVE]/[NEUTRAL]/[POSITIVE].
-Output: ./models/bart_sentiment_controlled
- 
-Run this on a GPU (Colab T4 or similar) — CPU training of bart-large is
-impractically slow.
-"""
 import gc
 import os
 import shutil
- 
 import torch
 from datasets import load_dataset, load_from_disk
 from transformers import (AutoTokenizer, AutoModelForSeq2SeqLM, Trainer,
@@ -32,16 +19,12 @@ VAL_DATA_DIR = "./data/tagged_val_nltk"
  
 SPECIAL_TOKENS = ['[POSITIVE]', '[NEGATIVE]', '[NEUTRAL]']
  
-# ==================== Free up VRAM before loading BART ====================
-# If a sentiment classifier (e.g. from sentiment_utils) is still in memory
-# from an earlier cell/session, clear it first — bart-large is heavy enough
-# on a T4 that this matters.
+
+# Free up VRAM. If a model is in the memory from an earlier cell, it is cleared.
 gc.collect()
 torch.cuda.empty_cache()
-# ============================================================================
- 
-# Start from a fresh, unpolluted copy of the base model — not bart_cnn_finetuned,
-# since that fine-tune made ROUGE worse and was abandoned.
+
+# Start from a fresh copy of the base model 
 if os.path.exists(os.path.join(BASE_MODEL_DIR, "config.json")):
     print("Loading base model locally from", BASE_MODEL_DIR)
     tokenizer = AutoTokenizer.from_pretrained(BASE_MODEL_DIR)
@@ -50,28 +33,25 @@ else:
     print("Downloading base model from the Hub")
     tokenizer = AutoTokenizer.from_pretrained(MODEL_NAME)
     model = AutoModelForSeq2SeqLM.from_pretrained(MODEL_NAME)
-    # Save the plain base model now, before special tokens are added below —
+    # Saving the plain base model before special tokens are added.
     # evaluate.ipynb needs this exact folder to exist for the comparison.
     os.makedirs(BASE_MODEL_DIR, exist_ok=True)
     tokenizer.save_pretrained(BASE_MODEL_DIR)
     model.save_pretrained(BASE_MODEL_DIR)
  
-# Register the sentiment control tokens so the tokenizer keeps them whole
-# instead of splitting them into sub-word pieces, then resize the model's
-# embedding matrix to match.
+# Register the sentiment control tokens so the tokenizer keeps them whole 
 tokenizer.add_special_tokens({'additional_special_tokens': SPECIAL_TOKENS})
-model.resize_token_embeddings(len(tokenizer))
+model.resize_token_embeddings(len(tokenizer)) # resizing BART's embedding matrix
 model.to(device)
  
-# ---- Load the pre-tagged datasets, tagging them now if they don't exist yet ----
-# Same fallback pattern as the model above: don't assume a prior step ran on
-# this machine, just produce what's missing.
+
+#  Load the pre-tagged datasets
 if os.path.exists(TRAIN_DATA_DIR) and os.path.exists(VAL_DATA_DIR):
     print("Loading pre-tagged data from", TRAIN_DATA_DIR, "and", VAL_DATA_DIR)
     tagged_train = load_from_disk(TRAIN_DATA_DIR)
     tagged_val = load_from_disk(VAL_DATA_DIR)
 else:
-    print("Tagged data not found locally — tagging it now (this is the slow part)")
+    print("Tagged data not found locally. Tagging it now")
     dataset = load_dataset("abisee/cnn_dailymail", "3.0.0")
     train_subset = dataset['train'].select(range(2000))
     val_subset = dataset['validation'].select(range(200))
@@ -130,10 +110,11 @@ trainer.save_model(FT_DIR)
 tokenizer.save_pretrained(FT_DIR)
 print("Saved fine-tuned model to", FT_DIR)
  
-# ---- Download from Colab, if that's where this ran ----
+
+# Download results
 shutil.make_archive("bart_sentiment_controlled", "zip", FT_DIR)
 try:
     from google.colab import files
     files.download("bart_sentiment_controlled.zip")
 except ImportError:
-    print("Not running in Colab — zip saved locally at ./bart_sentiment_controlled.zip")
+    print("Not running in Colab. Zip saved locally at ./bart_sentiment_controlled.zip")

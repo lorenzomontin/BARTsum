@@ -49,7 +49,7 @@ The experiment uses a **2,000-example training slice and a 200-example validatio
 
 Sentiment conditioning is implemented entirely through input representation and fine-tuning as BART has no built-in sentiment mechanism.
 
-1. **Labelling.** Each article is split into sentences with NLTK and grouped into chunks of 3 paragraphs.
+1. **Labelling.** Each article is split into 3 main sentences with NLTK.
 2. **Classification.** Each chunk is scored by [`cardiffnlp/twitter-roberta-base-sentiment-latest`](https://huggingface.co/cardiffnlp/twitter-roberta-base-sentiment-latest), a 3-class sentiment classifier.
 3. **Tagging.** Each chunk is prefixed with its predicted label as a literal token: `[NEGATIVE]`, `[NEUTRAL]`, or `[POSITIVE]`.
 4. **Tokenizer extension.** These labels are registered as additional special tokens, and BART's embedding matrix is resized so it learns dedicated embeddings for them, rather than having them split into arbitrary sub-word pieces.
@@ -131,7 +131,7 @@ Sentiment alignment improves meaningfully under conditioning, while ROUGE-1/2/L 
 
 **Content quality (ROUGE)** ROUGE-1/2 measure unigram/bigram overlap with the reference summary; ROUGE-L and ROUGE-Lsum measure longest common subsequence overlap. These are standard summarisation metrics but only capture lexical overlap, not semantic correctness.
 
-**Sentiment preservation and alignment.** For a given article, it's split into paragraphs and each is scored by the same RoBERTa sentiment classifier used for tagging. The resulting probability vectors (negative/neutral/positive) are averaged into one vector per text. Sentiment alignment is the **cosine similarity** between the source article's vector and the generated summary's vector, ranging from -1 (opposite sentiment) to 1 (identical sentiment profile). It is a similarity score, not an accuracy metric as it says nothing about factual correctness, only about whether the emotional tone was preserved.
+**Sentiment preservation and alignment.** For a given article, it's split into sentences and each is scored by the same RoBERTa sentiment classifier used for tagging. The resulting probability vectors (negative/neutral/positive) are averaged into one vector per text. Sentiment alignment is the **cosine similarity** between the source article's vector and the generated summary's vector, ranging from -1 (opposite sentiment) to 1 (identical sentiment profile). It is a similarity score, not an accuracy metric as it says nothing about factual correctness, only about whether the emotional tone was preserved.
 
 ## Reproducibility
 
